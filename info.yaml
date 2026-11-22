@@ -1,5 +1,5 @@
 # Tiny Tapeout project information
-project: ALU 2 BITS
+project:
   title:        "ALU 2 BITS"      # Project title
   author:       "DANIEL ANTONIO SANTIAGO FLORES AND JOSE JULIAN VAZQUEZ HERNANDEZ"      # Your name
   discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
@@ -11,7 +11,7 @@ project: ALU 2 BITS
   tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
 
   # Your top module name must start with "tt_um_". Make it unique by including your github username:
-  top_module:  "alu_3bit"
+  top_module:  "tt_um_alu_2bit"
 
   # List your project's source files here.
   # Source files must be in ./src and you must list each source file separately, one per line.
