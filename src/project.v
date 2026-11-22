@@ -1,4 +1,4 @@
-module alu_3bit (
+module tt_um_alu_2bit (
     input  wire [2:0] a,
     input  wire [2:0] b,
     input  wire [1:0] op,
