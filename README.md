@@ -1,42 +1,84 @@
-![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
+<!---
 
-# Tiny Tapeout Verilog Project Template
+This file is used to generate your project datasheet. Please fill in the information below and delete any unused
+sections. The document uses Markdown syntax. For more information see:
 
-- [Read the documentation for project](docs/info.md)
+https://github.com/tinytapeout/tinytapeout-template/blob/main/docs/info.md
 
-## What is Tiny Tapeout?
+--->
 
-Tiny Tapeout is an educational project that aims to make it easier and cheaper than ever to get your digital and analog designs manufactured on a real chip.
+## How it works
 
-To learn more and get started, visit https://tinytapeout.com.
+This project implements a **2-bit Arithmetic Logic Unit (ALU)** with four basic arithmetic operations: Addition, Subtraction, Multiplication and Division.
 
-## Set up your Verilog project
+The design is fully combinational. It takes two 3-bit operands (A and B) and a 2-bit operation code, and produces a 4-bit result along with three status flags: Carry/Borrow (C), Zero (Z) and Error (E).
 
-1. Add your Verilog files to the `src` folder.
-2. Edit the [info.yaml](info.yaml) and update information about your project, paying special attention to the `source_files` and `top_module` properties. If you are upgrading an existing Tiny Tapeout project, check out our [online info.yaml migration tool](https://tinytapeout.github.io/tt-yaml-upgrade-tool/).
-3. Edit [docs/info.md](docs/info.md) and add a description of your project.
-4. Adapt the testbench to your design. See [test/README.md](test/README.md) for more information.
+### Pin mapping
 
-The GitHub action will automatically build the ASIC files using [LibreLane](https://www.zerotoasiccourse.com/terminology/librelane/).
+**Inputs** (`ui_in[7:0]`):
+- `ui_in[2:0]` → Operand A (a2 a1 a0)
+- `ui_in[5:3]` → Operand B (b2 b1 b0)
+- `ui_in[7:6]` → Operation code (op1 op0)
 
-## Enable GitHub actions to build the results page
+**Outputs** (`uo_out[7:0]`):
+- `uo_out[3:0]` → Result Y (y3 y2 y1 y0)
+- `uo_out[4]`   → Carry / Borrow flag (C)
+- `uo_out[5]`   → Zero flag (Z)
+- `uo_out[6]`   → Error flag (E) – active when dividing by zero
+- `uo_out[7]`   → Not used (tied to 0)
 
-- [Enabling GitHub Pages](https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part)
+Bidirectional pins (`uio`) are not used.
 
-## Resources
+### Operations and flags
 
-- [FAQ](https://tinytapeout.com/faq/)
-- [Digital design lessons](https://tinytapeout.com/digital_design/)
-- [Learn how semiconductors work](https://tinytapeout.com/siliwiz/)
-- [Join the community](https://tinytapeout.com/discord)
-- [Build your design locally](https://www.tinytapeout.com/guides/local-hardening/)
+| op[1:0] | Operation      | Description                                      | Flags affected      |
+|---------|----------------|--------------------------------------------------|---------------------|
+| `00`    | Addition       | Y = A + B                                        | Z                   |
+| `01`    | Subtraction    | Y = A − B                                        | C (borrow), Z       |
+| `10`    | Multiplication | Y = A × B (lower 4 bits)                         | C (overflow), Z     |
+| `11`    | Division       | Y = A / B (integer quotient)                     | E (div by zero), Z  |
 
-## What next?
+**Flag details:**
+- **C (Carry/Borrow)**: 
+  - In subtraction: 1 when A < B (borrow occurred)
+  - In multiplication: 1 when the product needs more than 4 bits
+- **Z (Zero)**: 1 when the result Y is zero **and** there is no carry and no error
+- **E (Error)**: 1 only when trying to divide by zero (B = 0)
 
-- [Submit your design to the next shuttle](https://app.tinytapeout.com/).
-- Edit [this README](README.md) and explain your design, how it works, and how to test it.
-- Share your project on your social network of choice:
-  - LinkedIn [#tinytapeout](https://www.linkedin.com/search/results/content/?keywords=%23tinytapeout) [@TinyTapeout](https://www.linkedin.com/company/100708654/)
-  - Mastodon [#tinytapeout](https://chaos.social/tags/tinytapeout) [@matthewvenn](https://chaos.social/@matthewvenn)
-  - X (formerly Twitter) [#tinytapeout](https://twitter.com/hashtag/tinytapeout) [@tinytapeout](https://twitter.com/tinytapeout)
-  - Bluesky [@tinytapeout.com](https://bsky.app/profile/tinytapeout.com)
+### Function select (op) specification
+
+| op[1:0] | Binary | Operation       | Result                          |
+|---------|--------|-----------------|---------------------------------|
+| 0       | `00`   | ADD             | Y = A + B                       |
+| 1       | `01`   | SUB             | Y = A − B                       |
+| 2       | `10`   | MUL             | Y = (A × B)[3:0]                |
+| 3       | `11`   | DIV             | Y = A / B  (E=1 if B=0)         |
+
+## How to test
+
+1. Apply power and set `ena = 1`.
+2. Set the desired values on the input pins:
+   - `ui_in[2:0]` = Operand A (0 to 7)
+   - `ui_in[5:3]` = Operand B (0 to 7)
+   - `ui_in[7:6]` = Operation code
+3. Observe the result on `uo_out[3:0]` and the flags on `uo_out[6:4]`.
+
+**Example tests:**
+
+| A | B | op  | Expected Y | C | Z | E | Description              |
+|---|---|-----|------------|---|---|---|--------------------------|
+| 3 | 2 | 00  | 5          | 0 | 0 | 0 | 3 + 2 = 5                |
+| 5 | 2 | 01  | 3          | 0 | 0 | 0 | 5 − 2 = 3                |
+| 2 | 5 | 01  | 13*        | 1 | 0 | 0 | 2 − 5 (borrow)           |
+| 3 | 3 | 10  | 9          | 0 | 0 | 0 | 3 × 3 = 9                |
+| 5 | 5 | 10  | 9          | 1 | 0 | 0 | 5 × 5 = 25 → overflow    |
+| 6 | 2 | 11  | 3          | 0 | 0 | 0 | 6 / 2 = 3                |
+| 4 | 0 | 11  | 0          | 0 | 0 | 1 | Division by zero → Error |
+
+\* In 4-bit two’s complement representation of the difference.
+
+## External hardware
+
+No specialized external hardware is required. The ALU is fully self-contained.
+Optional:
+- LEDs to display the 4-bit result and the 3 status flags (C, Z, E)
